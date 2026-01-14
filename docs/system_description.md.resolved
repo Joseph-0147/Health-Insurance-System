@@ -1,0 +1,97 @@
+# Health Insurance Management System - System Description
+
+## 1. Overview
+The **Health Insurance Management System** is a comprehensive, role-based web application designed to manage health insurance operations for the Kenyan market. It facilitates interaction between five key stakeholders: **Members, Providers, Employers, Insurance Agents, and Administrators**.
+
+The system is built to handle policy management, claim processing, member enrollment, and provider interactions with a focus on security, performance, and localized user experience (KES currency, local date formats, etc.).
+
+## 2. Technical Architecture
+
+### 2.1 Technology Stack
+*   **Frontend:** React.js (v18), Tailwind CSS, React Router v6, Axios, Recharts (for analytics).
+*   **Backend:** Node.js, Express.js.
+*   **Database:** PostgreSQL (relational data), Sequelize ORM.
+*   **Caching:** Redis (ioredis) for session management and API response caching.
+*   **Authentication:** JWT (JSON Web Tokens) with a centralized Auth Context.
+*   **Security:** Helmet (headers), Express Rate Limit, bcryptjs (password hashing).
+
+### 2.2 Key Architectural Patterns
+*   **MVC (Model-View-Controller):** Structured backend with separate Routes, Controllers, and Services.
+*   **Role-Based Access Control (RBAC):** Middleware-enforced permissions ensuring users only access their authorized portals.
+*   **3NF Database Schema:** Normalized database design ensuring data integrity.
+*   **Computational Offloading:** Complex logic (like Risk Assessment) is separated into dedicated services to maintain controller leanness.
+
+## 3. Core Modules & Features by Role
+
+### 3.1 👤 Member Portal
+Designed for policyholders to manage their insurance.
+*   **Dashboard:** Overview of active policies, recent claims, and coverage limits.
+*   **Claims Management:**
+    *   **Submit Claim:** Step-by-step wizard to file new claims (uploading receipts, selecting providers).
+    *   **View History:** Track status of submitted claims (Pending, Approved, Paid).
+*   **Provider Search:** Find networked hospitals and clinics.
+*   **Digital ID Card:** View and print insurance membership card.
+*   **Profile:** Manage personal details and dependents.
+
+### 3.2 🏥 Provider Portal
+For hospitals and doctors to interact with the insurer.
+*   **Dashboard:** Financial stats (Revenue MTD, Claims Paid), quick eligibility checks.
+*   **Patient Management:** Search and verify patient eligibility and coverage details in real-time.
+*   **Claims Processing:** Submit medical claims directly on behalf of patients and track reimbursement.
+*   **Reports:** Generate financial and treatment reports.
+
+### 3.3 🏢 Employer Portal
+For HR managers handling group insurance policies.
+*   **Dashboard:** Overview of total employees enrolled and monthly premium dues.
+*   **Employee Management:**
+    *   **Add Employee:** Enroll new staff members into the group plan.
+    *   **Roster:** View and manage list of active/terminated employees.
+*   **Billing:** View and download monthly invoices and payment history.
+*   **Census Management:** Bulk tools for managing large workforces.
+
+### 3.4 🕵️ Insurance Agent Portal
+For field agents selling policies.
+*   **Dashboard:** Track sales performance, commissions, and recent applications.
+*   **Member Enrollment:** Register new individual members.
+*   **Risk Assessment:** Integrated tool to calculate risk scores based on applicant data before policy issuance.
+*   **Commission Tracking:** View earned commissions from sales.
+
+### 3.5 🛡️ Admin Portal
+Center of operations.
+*   **System Dashboard:** High-level metrics (Total Revenue, Loss Ratio, User Counts).
+*   **User Management:** detailed CRUD operations for all user roles (Members, Providers, Agents).
+*   **System Configuration:** Manage global settings.
+*   **Reporting:** Export comprehensive system-wide reports.
+
+## 4. Database Schema
+The system uses a robust relational schema:
+*   **Users:** Base table for authentication (email, password hash, role).
+*   **Profiles:** Extended details specific to each role (linked 1:1 with Users).
+*   **Policies:** Insurance products with coverage limits and rules.
+*   **Claims:** Transactional records linking Members, Providers, and Policies.
+*   **Payments:** Tracking of premiums paid and claim reimbursements.
+
+## 5. Security & Performance
+
+### 5.1 Security Measures
+*   **JWT Authentication:** Stateless, secure token-based auth.
+*   **Password Hashing:** Industry-standard bcrypt hashing.
+*   **Rate Limiting:** Protects API endpoints against brute-force and DDoS attacks (configured in [server/index.js](file:///c:/Users/joeki/Documents/Notes/4.1/CSS/Health%20Insurance/server/index.js)).
+*   **Helmet:** Secure HTTP headers to prevent XSS and other injection attacks.
+*   **RBAC Middleware:** Strict route protection on both Frontend ([PrivateRoute](file:///c:/Users/joeki/Documents/Notes/4.1/CSS/Health%20Insurance/client/src/components/PrivateRoute.js#5-29) component) and Backend (`authMiddleware`).
+
+### 5.2 Performance Optimization
+*   **Redis Caching:**
+    *   Caches frequently accessed data (e.g., Provider Search results).
+    *   Manages user sessions for fast validation.
+*   **Optimized Queries:** Sequelize eager loading used efficiently to minimize N+1 problems.
+*   **Lazy Loading:** React components (planned) to reduce initial bundle size.
+
+## 6. Localization
+The system is tailored for the Kenyan environment:
+*   **Currency:** All financial figures displayed in **KES (Kenyan Shilling)**.
+*   **Data Formats:** Local dates and address formats (e.g., "Nairobi, Westlands").
+*   **Context:** Sample data reflects local entities (e.g., "Nairobi Hospital", "M-Pesa").
+
+---
+*Generated by Antigravity AI - January 2026*

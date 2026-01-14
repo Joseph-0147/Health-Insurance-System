@@ -93,8 +93,8 @@ const Layout = ({ children, portalType }) => {
                 key={link.path}
                 to={link.path}
                 className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-lg transition-all duration-200 ${isActive
-                    ? `bg-gradient-to-r ${getPortalGradient()} text-white shadow-lg`
-                    : 'text-gray-400 hover:text-white hover:bg-[#2c2e33]'
+                  ? `bg-gradient-to-r ${getPortalGradient()} text-white shadow-lg`
+                  : 'text-gray-400 hover:text-white hover:bg-[#2c2e33]'
                   } ${sidebarCollapsed ? 'justify-center' : ''}`}
                 title={sidebarCollapsed ? link.label : ''}
               >
@@ -124,10 +124,10 @@ const Layout = ({ children, portalType }) => {
 
           <div className="flex items-center gap-4">
             {/* Notifications */}
-            <button className="relative w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors">
+            <Link to={`/${portalType}/notifications`} className="relative w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors">
               🔔
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            </Link>
 
             {/* User Menu */}
             <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
@@ -138,9 +138,15 @@ const Layout = ({ children, portalType }) => {
                 <p className="text-sm font-medium text-gray-800">{user?.email || 'User'}</p>
                 <p className="text-xs text-gray-500 capitalize">{portalType}</p>
               </div>
+              <Link
+                to={`/${portalType}/profile`}
+                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-right md:text-left"
+              >
+                My Profile
+              </Link>
               <button
                 onClick={logout}
-                className="ml-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="ml-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors border-l border-gray-200"
               >
                 Logout
               </button>

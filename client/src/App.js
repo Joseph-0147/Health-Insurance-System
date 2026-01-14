@@ -34,6 +34,9 @@ import Billing from './pages/employer/Billing';
 // Common
 import Reports from './pages/common/Reports';
 import Settings from './pages/common/Settings';
+import Notifications from './pages/common/Notifications';
+import Profile from './pages/common/Profile';
+import Support from './pages/common/Support';
 
 // Admin Portal
 import AdminDashboard from './pages/admin/Dashboard';
@@ -66,6 +69,7 @@ function App() {
                   <Routes>
                     <Route path="dashboard" element={<MemberDashboard />} />
                     <Route path="profile" element={<MemberProfile />} />
+                    <Route path="notifications" element={<Notifications />} />
                     <Route path="claims" element={<Claims />} />
                     <Route path="claims/submit" element={<SubmitClaim />} />
                     <Route path="providers" element={<ProviderSearch />} />
@@ -84,6 +88,8 @@ function App() {
                 <Layout portalType="provider">
                   <Routes>
                     <Route path="dashboard" element={<ProviderDashboard />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="notifications" element={<Notifications />} />
                     <Route path="claims" element={<ProviderClaims />} />
                     <Route path="claims/submit" element={<ProviderSubmitClaim />} />
                     <Route path="patients" element={<ProviderPatients />} />
@@ -102,11 +108,14 @@ function App() {
                 <Layout portalType="employer">
                   <Routes>
                     <Route path="dashboard" element={<EmployerDashboard />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="notifications" element={<Notifications />} />
                     <Route path="employees" element={<Employees />} />
                     <Route path="employees/add" element={<AddEmployee />} />
                     <Route path="billing" element={<Billing />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="settings" element={<Settings />} />
+                    <Route path="support" element={<Support />} />
                   </Routes>
                 </Layout>
               </PrivateRoute>
@@ -121,6 +130,8 @@ function App() {
                 <Layout portalType="admin">
                   <Routes>
                     <Route path="dashboard" element={<AdminDashboard />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="notifications" element={<Notifications />} />
                     <Route path="users" element={<ManageUsers />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="settings" element={<Settings />} />
@@ -138,7 +149,11 @@ function App() {
                 <Layout portalType="insurance_agent">
                   <Routes>
                     <Route path="dashboard" element={<AgentDashboard />} />
+                    <Route path="profile" element={<Profile />} />
+                    <Route path="notifications" element={<Notifications />} />
                     <Route path="enrollment" element={<EnrollMember />} />
+                    <Route path="reports" element={<Reports />} />
+                    <Route path="settings" element={<Settings />} />
                   </Routes>
                 </Layout>
               </PrivateRoute>
