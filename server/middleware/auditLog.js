@@ -56,31 +56,31 @@ const auditLog = async (req, res, next) => {
       const auditEntry = {
         requestId: req.requestId,
         timestamp: new Date(),
-        
+
         // User information
         userId: req.user?.userId || null,
         userRole: req.user?.role || 'anonymous',
         userEmail: req.user?.email || null,
-        
+
         // Request information
         method: req.method,
         path: req.path,
         action: determineAction(req.method),
         resourceType: extractResourceType(req.path),
         resourceId: req.params.id || null,
-        
+
         // Network information
         ipAddress: req.ip || req.connection.remoteAddress,
         userAgent: req.get('user-agent'),
-        
+
         // Response information
         statusCode: res.statusCode,
         success: res.statusCode < 400,
         duration,
-        
+
         // PHI flag
         phiAccessed,
-        
+
         // Additional context
         queryParams: Object.keys(req.query).length > 0 ? req.query : null,
         errorMessage: res.statusCode >= 400 ? responseBody?.message : null,
@@ -158,7 +158,7 @@ const isHighRiskAction = (req) => {
   ];
 
   return highRiskPaths.some(path => req.path.includes(path)) ||
-         (req.method === 'DELETE' && isPHIAccess(req));
+    (req.method === 'DELETE' && isPHIAccess(req));
 };
 
 /**
@@ -171,32 +171,30 @@ const getAuditLogs = async (req, res) => {
 
     // Build query filters
     const filters = {};
-    
-    if (startDate) filters.timestamp = { $gte: new Date(startDate) };
-    if (endDate) filters.timestamp = { ...filters.timestamp, $lte: new Date(endDate) };
+    const { Op } = require('sequelize');
+
+    if (startDate) filters.timestamp = { [Op.gte]: new Date(startDate) };
+    if (endDate) filters.timestamp = { ...filters.timestamp, [Op.lte]: new Date(endDate) };
     if (userId) filters.userId = userId;
     if (action) filters.action = action;
     if (resourceType) filters.resourceType = resourceType;
 
-    // In production, query AuditLog model
-    // const logs = await AuditLog.findAll({
-    //   where: filters,
-    //   limit: parseInt(limit),
-    //   offset: (parseInt(page) - 1) * parseInt(limit),
-    //   order: [['timestamp', 'DESC']],
-    // });
-
-    // For now, return mock data
-    const logs = [];
+    const { count, rows } = await db.AuditLog.findAndCountAll({
+      where: filters,
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
+      order: [['timestamp', 'DESC']],
+    });
 
     res.json({
       success: true,
       data: {
-        logs,
+        logs: rows,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total: logs.length,
+          total: count,
+          pages: Math.ceil(count / limit)
         },
       },
     });

@@ -40,6 +40,9 @@ const Login = () => {
           case 'insurance_agent':
             navigate('/agent/dashboard');
             break;
+          case 'adjudicator':
+            navigate('/adjudicator/dashboard');
+            break;
           default:
             navigate('/');
         }
@@ -188,8 +191,8 @@ const Login = () => {
                   <p className="text-gray-400">provider@demo.com</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-2 text-center">
-                  <p className="font-medium text-gray-700">Employer</p>
-                  <p className="text-gray-400">employer@demo.com</p>
+                  <p className="font-medium text-gray-700">Adjudicator</p>
+                  <p className="text-gray-400">adjudicator@demo.com</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-2 text-center">
                   <p className="font-medium text-gray-700">Admin</p>

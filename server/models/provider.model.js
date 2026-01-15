@@ -52,6 +52,7 @@ module.exports = (sequelize, DataTypes) => {
 
     Provider.associate = (models) => {
         Provider.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
+        Provider.hasMany(models.Claim, { foreignKey: 'providerId', as: 'claims' });
         // Provider.hasMany(models.Contract, { foreignKey: 'providerId', as: 'contracts' });
         // Provider.hasMany(models.ProviderCredential, { foreignKey: 'providerId', as: 'credentials' });
     };

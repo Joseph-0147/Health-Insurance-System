@@ -1,37 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
 
 const Profile = () => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [memberId, setMemberId] = useState('MEM-PENDING');
+  const [policyData, setPolicyData] = useState(null);
   const [formData, setFormData] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: user?.email || 'john.doe@email.com',
-    phone: '(555) 123-4567',
-    dateOfBirth: '1985-06-15',
-    address: '123 Main Street',
-    city: 'Springfield',
-    state: 'IL',
-    zipCode: '62701',
-    emergencyContact: 'Jane Doe',
-    emergencyPhone: '(555) 987-6543',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    address: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    emergencyContact: '',
+    emergencyPhone: '',
   });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        // 1. Fetch Member Profile
+        const res = await fetch('/api/members/me', { headers });
+        const data = await res.json();
+
+        if (data.success && data.data) {
+          const m = data.data;
+          setFormData({
+            firstName: m.user?.firstName || '',
+            lastName: m.user?.lastName || '',
+            email: m.user?.email || '',
+            phone: m.phoneNumber || '',
+            dateOfBirth: m.dateOfBirth || '',
+            address: m.address || '',
+            city: m.city || '',
+            state: m.state || '',
+            zipCode: m.zipCode || '',
+            emergencyContact: 'Not Set',
+            emergencyPhone: 'Not Set'
+          });
+
+          setMemberId(`MEM-${new Date(m.createdAt).getFullYear()}-${m.id.substring(0, 6).toUpperCase()}`);
+        }
+
+        // 2. Fetch Active Policy for Group Number
+        const policyRes = await fetch('/api/policies/my-policies', { headers });
+        const pData = await policyRes.json();
+        if (pData.success && pData.data?.length > 0) {
+          setPolicyData(pData.data[0]);
+        }
+
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success('Profile updated successfully!');
-    setIsEditing(false);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const res = await fetch('/api/members/me', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success('Profile updated successfully!');
+        setIsEditing(false);
+      } else {
+        toast.error(data.message || 'Update failed');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update profile');
+    }
   };
 
-  const inputClassName = `w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
-    isEditing ? 'border-gray-200 bg-white hover:border-purple-300' : 'border-gray-100 bg-gray-50 text-gray-600'
-  }`;
+  const inputClassName = `w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${isEditing ? 'border-gray-200 bg-white hover:border-purple-300' : 'border-gray-100 bg-gray-50 text-gray-600'
+    }`;
 
   return (
     <div className="space-y-6">
@@ -72,7 +136,7 @@ const Profile = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Member ID</p>
-                <p className="font-semibold text-gray-900">MEM-2024-001234</p>
+                <p className="font-semibold text-gray-900">{memberId}</p>
               </div>
               <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
                 <span>🪪</span>
@@ -80,8 +144,8 @@ const Profile = () => {
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500 uppercase tracking-wide">Group Number</p>
-                <p className="font-semibold text-gray-900">GRP-5678</p>
+                <p className="text-xs text-gray-500 uppercase tracking-wide">Policy Number</p>
+                <p className="font-semibold text-gray-900">{policyData?.policyNumber || 'GRP-KEN-001'}</p>
               </div>
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                 <span>👥</span>
@@ -90,7 +154,11 @@ const Profile = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide">Coverage Start</p>
-                <p className="font-semibold text-gray-900">January 1, 2024</p>
+                <p className="font-semibold text-gray-900">
+                  {policyData?.startDate
+                    ? new Date(policyData.startDate).toLocaleDateString('en-KE', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'January 1, 2024'}
+                </p>
               </div>
               <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
                 <span>📅</span>
@@ -109,7 +177,7 @@ const Profile = () => {
                 Personal Information
               </h3>
             </div>
-            
+
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -198,7 +266,7 @@ const Profile = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">County</label>
                     <input
                       type="text"
                       name="state"
@@ -209,7 +277,7 @@ const Profile = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">ZIP Code</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Postal Code</label>
                     <input
                       type="text"
                       name="zipCode"

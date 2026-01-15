@@ -3,7 +3,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h'; // Extended for dev
 const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 // In-memory refresh token store for prototype
@@ -46,7 +46,7 @@ const generateRefreshToken = (payload) => {
       expiresAt: decoded?.exp ? decoded.exp * 1000 : Date.now(),
       valid: true,
     });
-  } catch {}
+  } catch { }
   return token;
 };
 

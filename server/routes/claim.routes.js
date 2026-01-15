@@ -7,6 +7,18 @@ const { authorize, authorizeOwnership } = require('../middleware/authorization')
 const claimController = require('../controllers/claim.controller');
 
 /**
+ * @route   GET /api/claims/provider-stats
+ * @desc    Get stats for provider dashboard
+ * @access  Private (Provider)
+ */
+router.get(
+  '/provider-stats',
+  authenticate,
+  authorize('provider'),
+  claimController.getProviderStats
+);
+
+/**
  * @route   POST /api/claims
  * @desc    Submit new claim
  * @access  Private (Member, Provider)
@@ -17,13 +29,14 @@ router.post(
   authorize('member', 'provider'),
   [
     body('policyId').isUUID().withMessage('Valid policy ID required'),
+    body('providerId').optional().isUUID().withMessage('Valid provider ID required if provided'),
     body('claimType')
       .isIn(['medical', 'dental', 'vision', 'pharmacy', 'mental_health'])
       .withMessage('Invalid claim type'),
     body('serviceDate').isISO8601().withMessage('Valid service date required'),
     body('billedAmount').isFloat({ min: 0 }).withMessage('Valid billed amount required'),
-    body('diagnosisCodes').isArray().withMessage('Diagnosis codes must be array'),
-    body('procedureCodes').isArray().withMessage('Procedure codes must be array'),
+    body('diagnosisCodes').isArray().withMessage('Diagnosis codes must be an array of strings'),
+    body('procedureCodes').isArray().withMessage('Procedure codes must be an array of strings'),
   ],
   validate,
   claimController.submitClaim
@@ -118,18 +131,30 @@ router.post(
 );
 
 /**
+ * @route   GET /api/claims/adjudicator-stats
+ * @desc    Get stats for adjudicator dashboard
+ * @access  Private (Adjudicator, Admin)
+ */
+router.get(
+  '/adjudicator-stats',
+  authenticate,
+  authorize('adjudicator', 'admin'),
+  claimController.getAdjudicatorStats
+);
+
+/**
  * @route   PUT /api/claims/:id/process
  * @desc    Process/adjudicate claim
- * @access  Private (Admin only)
+ * @access  Private (Adjudicator, Admin)
  */
 router.put(
   '/:id/process',
   authenticate,
-  authorize('admin'),
+  authorize('adjudicator', 'admin'),
   [
     param('id').isUUID(),
     body('status')
-      .isIn(['approved', 'partially_approved', 'denied'])
+      .isIn(['approved', 'partially_approved', 'denied', 'rejected'])
       .withMessage('Invalid status'),
     body('allowedAmount').optional().isFloat({ min: 0 }),
     body('denialReason').optional().trim(),

@@ -31,7 +31,8 @@ module.exports = (sequelize, DataTypes) => {
         'member',
         'provider',
         'employer',
-        'insurance_agent' // Added as per architectural requirements
+        'insurance_agent',
+        'adjudicator' // Added as per architectural requirements
       ),
       defaultValue: 'member'
     },

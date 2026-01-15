@@ -39,6 +39,7 @@ db.Dependent = require('./dependent.model')(sequelize, Sequelize.DataTypes);
 db.Policy = require('./policy.model')(sequelize, Sequelize.DataTypes);
 db.Claim = require('./claim.model')(sequelize, Sequelize.DataTypes);
 db.ClaimDocument = require('./claimDocument.model')(sequelize, Sequelize.DataTypes);
+db.ClaimLine = require('./claimLine.model')(sequelize, Sequelize.DataTypes);
 db.Appeal = require('./appeal.model')(sequelize, Sequelize.DataTypes);
 db.Provider = require('./provider.model')(sequelize, Sequelize.DataTypes);
 db.ProviderCredential = require('./providerCredential.model')(sequelize, Sequelize.DataTypes);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -16,6 +16,43 @@ const SubmitClaim = () => {
     description: '',
     documents: [],
   });
+  const [providers, setProviders] = useState([]);
+  const [providersLoading, setProvidersLoading] = useState(false);
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setProvidersLoading(true);
+        const token = localStorage.getItem('accessToken');
+
+        // 1. Fetch Providers
+        const provRes = await fetch('/api/providers/search?limit=100', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const provData = await provRes.json();
+        if (provData.success) {
+          setProviders(provData.data.providers);
+        }
+
+        // 2. Fetch Policies to get a valid policyId
+        const polyRes = await fetch('/api/policies/my-policies', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const polyData = await polyRes.json();
+        if (polyData.success && polyData.data.length > 0) {
+          // Set the first active policy as default
+          const activePolicy = polyData.data.find(p => p.status === 'active') || polyData.data[0];
+          setFormData(prev => ({ ...prev, policyId: activePolicy.id }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch initial data:', error);
+        toast.error('Could not load required data');
+      } finally {
+        setProvidersLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -31,19 +68,49 @@ const SubmitClaim = () => {
     setFormData({ ...formData, documents: newDocs });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast.success('Claim submitted successfully! Claim ID: CLM-2024-005');
-    navigate('/member/claims');
+
+    if (!formData.policyId) {
+      toast.error('No active policy found. Please enroll in a plan first.');
+      return;
+    }
+
+    try {
+      const payload = {
+        policyId: formData.policyId,
+        providerId: formData.providerId,
+        claimType: formData.claimType,
+        serviceDate: formData.serviceDate,
+        billedAmount: parseFloat(formData.billedAmount),
+        diagnosisCodes: formData.diagnosisCodes ? formData.diagnosisCodes.split(',').map(s => s.trim()).filter(s => s) : [],
+        procedureCodes: formData.procedureCodes ? formData.procedureCodes.split(',').map(s => s.trim()).filter(s => s) : [],
+        description: formData.description
+      };
+
+      const response = await fetch('/api/claims', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('Claim submitted successfully!');
+        navigate('/member/claims');
+      } else {
+        toast.error(data.message || 'Validation failed');
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
+      toast.error('An error occurred. Please try again.');
+    }
   };
 
-  const providers = [
-    { id: '1', name: 'Aga Khan University Hospital', type: 'Hospital' },
-    { id: '2', name: 'Nairobi Dental Clinic', type: 'Dental' },
-    { id: '3', name: 'Lions SightFirst Eye Hospital', type: 'Vision' },
-    { id: '4', name: 'Goodlife Pharmacy', type: 'Pharmacy' },
-    { id: '5', name: 'Chiromo Hospital Group', type: 'Mental Health' },
-  ];
 
   const inputClassName = "w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-gray-50 hover:bg-white";
 
@@ -137,11 +204,12 @@ const SubmitClaim = () => {
                     });
                   }}
                   required
+                  disabled={providersLoading}
                   className={inputClassName}
                 >
-                  <option value="">Select provider</option>
+                  <option value="">{providersLoading ? 'Loading providers...' : 'Select provider'}</option>
                   {providers.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
+                    <option key={p.id} value={p.id}>{p.name} ({p.specialty || 'General'})</option>
                   ))}
                 </select>
               </div>
@@ -162,7 +230,7 @@ const SubmitClaim = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Billed Amount *</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-3.5 text-gray-500 font-medium">KES</span>
+                  <span className="absolute left-4 top-3.5 text-gray-500 font-medium">ksh</span>
                   <input
                     type="number"
                     name="billedAmount"
@@ -318,7 +386,7 @@ const SubmitClaim = () => {
                 </div>
                 <div className="bg-white rounded-xl p-4">
                   <p className="text-sm text-gray-500">Billed Amount</p>
-                  <p className="font-bold text-2xl text-purple-600">KES {parseFloat(formData.billedAmount || 0).toLocaleString()}</p>
+                  <p className="font-bold text-2xl text-purple-600">ksh {parseFloat(formData.billedAmount || 0).toLocaleString()}</p>
                 </div>
               </div>
               {(formData.diagnosisCodes || formData.procedureCodes) && (

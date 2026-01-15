@@ -5,20 +5,60 @@ import { toast } from 'react-toastify';
 const ProviderSubmitClaim = () => {
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [verifying, setVerifying] = useState(false);
+    const [memberInfo, setMemberInfo] = useState(null);
     const [formData, setFormData] = useState({
-        patientId: '',
-        patientName: '',
-        claimType: '',
-        serviceDate: '',
+        memberId: '',
+        dob: '',
+        policyId: '',
+        claimType: 'medical',
+        serviceDate: new Date().toISOString().split('T')[0],
+        billedAmount: '',
         diagnosisCodes: '',
         procedureCodes: '',
-        billedAmount: '',
         description: '',
         documents: [],
     });
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleVerifyMember = async () => {
+        if (!formData.memberId || !formData.dob) {
+            toast.warning('Member ID and DOB required for verification');
+            return;
+        }
+
+        setVerifying(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const res = await fetch('/api/providers/verify-eligibility', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ memberId: formData.memberId, dob: formData.dob })
+            });
+            const data = await res.json();
+            if (data.success && data.eligible) {
+                setMemberInfo(data.data);
+                // Automatically set policyId if returned
+                // We need to make sure verifyEligibility returns policyId
+                // I'll update the controller to return policyId
+                setFormData(prev => ({ ...prev, policyId: data.data.policyId || '' }));
+                toast.success(`Verified: ${data.data.memberName}`);
+            } else {
+                toast.error(data.message || 'Patient not eligible');
+                setMemberInfo(null);
+            }
+        } catch (error) {
+            toast.error('Failed to verify member');
+        } finally {
+            setVerifying(false);
+        }
     };
 
     const handleFileChange = (e) => {
@@ -31,17 +71,54 @@ const ProviderSubmitClaim = () => {
         setFormData({ ...formData, documents: newDocs });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        toast.success('Claim submitted successfully! Claim ID: CLM-2024-PROV-001');
-        navigate('/provider/claims');
-    };
+        if (!memberInfo || !formData.policyId) {
+            toast.error('Please verify patient eligibility first');
+            setStep(1);
+            return;
+        }
 
-    const patients = [
-        { id: 'PAT-001', name: 'John Doe', dob: '1985-05-12' },
-        { id: 'PAT-002', name: 'Jane Smith', dob: '1992-08-23' },
-        { id: 'PAT-003', name: 'Robert Johnson', dob: '1978-11-30' },
-    ];
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+
+            // Format codes as arrays
+            const diagnosisCodes = formData.diagnosisCodes.split(',').map(c => c.trim()).filter(c => c);
+            const procedureCodes = formData.procedureCodes.split(',').map(c => c.trim()).filter(c => c);
+
+            const payload = {
+                policyId: formData.policyId,
+                claimType: formData.claimType,
+                serviceDate: formData.serviceDate,
+                billedAmount: parseFloat(formData.billedAmount),
+                diagnosisCodes,
+                procedureCodes,
+                description: formData.description
+            };
+
+            const res = await fetch('/api/claims', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                toast.success('Claim submitted successfully!');
+                navigate('/provider/claims');
+            } else {
+                toast.error(data.message || 'Submission failed');
+            }
+        } catch (error) {
+            toast.error('Failed to submit claim');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const inputClassName = "w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-gray-50 hover:bg-white";
 
@@ -50,14 +127,14 @@ const ProviderSubmitClaim = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Provider Claim Submission</h1>
-                    <p className="text-gray-500 mt-1">Submit a claim on behalf of a patient</p>
+                    <h1 className="text-2xl font-bold text-gray-900">Medical Claim Submission</h1>
+                    <p className="text-gray-500 mt-1">Submit a real-time claim for patient reimbursement</p>
                 </div>
                 <Link
                     to="/provider/dashboard"
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all flex items-center gap-2 font-medium"
+                    className="px-4 py-2 bg-white text-gray-700 rounded-xl border border-gray-200 hover:bg-gray-50 transition-all flex items-center gap-2 font-medium"
                 >
-                    <span>←</span> Back to Dashboard
+                    <span>←</span> Dashboard
                 </Link>
             </div>
 
@@ -65,23 +142,23 @@ const ProviderSubmitClaim = () => {
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
                 <div className="flex items-center justify-center">
                     {[
-                        { num: 1, label: 'Patient & Service' },
-                        { num: 2, label: 'Documents' },
+                        { num: 1, label: 'Verification' },
+                        { num: 2, label: 'Claim Details' },
                         { num: 3, label: 'Review' }
                     ].map((s, idx) => (
                         <React.Fragment key={s.num}>
                             <div className="flex flex-col items-center">
                                 <div
                                     className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg transition-all ${step > s.num
-                                            ? 'bg-gradient-to-r from-green-400 to-green-500 text-white shadow-lg'
-                                            : step === s.num
-                                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-110'
-                                                : 'bg-gray-100 text-gray-400'
+                                        ? 'bg-gradient-to-r from-green-400 to-green-500 text-white shadow-lg'
+                                        : step === s.num
+                                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-110'
+                                            : 'bg-gray-100 text-gray-400'
                                         }`}
                                 >
                                     {step > s.num ? '✓' : s.num}
                                 </div>
-                                <span className={`mt-2 text-sm font-medium ${step >= s.num ? 'text-gray-900' : 'text-gray-400'}`}>
+                                <span className={`mt-2 text-[10px] uppercase font-bold tracking-widest ${step >= s.num ? 'text-gray-900' : 'text-gray-400'}`}>
                                     {s.label}
                                 </span>
                             </div>
@@ -94,51 +171,108 @@ const ProviderSubmitClaim = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-                {/* Step 1: Patient & Service Information */}
+                {/* Step 1: Patient Verification */}
                 {step === 1 && (
                     <div className="p-6 space-y-6">
-                        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                            <span className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white">👤</span>
-                            <h2 className="text-xl font-bold text-gray-900">Patient & Service Details</h2>
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <span className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white">👤</span>
+                                <h2 className="text-xl font-bold text-gray-900">Verify Patient Coverage</h2>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Patient *</label>
-                                <select
-                                    name="patientId"
-                                    value={formData.patientId}
-                                    onChange={(e) => {
-                                        const patient = patients.find(p => p.id === e.target.value);
-                                        setFormData({
-                                            ...formData,
-                                            patientId: e.target.value,
-                                            patientName: patient?.name || ''
-                                        });
-                                    }}
-                                    required
-                                    className={inputClassName}
-                                >
-                                    <option value="">Select patient</option>
-                                    {patients.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name} (DOB: {p.dob})</option>
-                                    ))}
-                                </select>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Member ID *</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        name="memberId"
+                                        value={formData.memberId}
+                                        onChange={handleChange}
+                                        placeholder="e.g. MEM-2024-XXXXXX"
+                                        className={inputClassName}
+                                    />
+                                </div>
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Patient Date of Birth *</label>
+                                <input
+                                    type="date"
+                                    name="dob"
+                                    value={formData.dob}
+                                    onChange={handleChange}
+                                    className={inputClassName}
+                                />
+                            </div>
+                        </div>
 
+                        <button
+                            type="button"
+                            onClick={handleVerifyMember}
+                            disabled={verifying}
+                            className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-md ${verifying
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:shadow-xl'
+                                }`}
+                        >
+                            {verifying ? '🔄 Verifying...' : 'Verify Beneficiary Coverage'}
+                        </button>
+
+                        {memberInfo && (
+                            <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-green-500 text-white rounded-2xl flex items-center justify-center text-xl shadow-md">✓</div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-green-900">{memberInfo.memberName}</h3>
+                                        <p className="text-green-700 text-sm font-medium">Valid Policy: {memberInfo.policyNumber}</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white/60 p-3 rounded-xl border border-white">
+                                        <p className="text-[10px] uppercase font-bold text-gray-500">Plan</p>
+                                        <p className="font-bold text-gray-800">{memberInfo.planName}</p>
+                                    </div>
+                                    <div className="bg-white/60 p-3 rounded-xl border border-white">
+                                        <p className="text-[10px] uppercase font-bold text-gray-500">PCP Copay</p>
+                                        <p className="font-bold text-gray-800">{memberInfo.copay}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-6 flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep(2)}
+                                        className="px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-bold shadow-lg transition-all flex items-center gap-2"
+                                    >
+                                        Proceed to Claim Details <span>→</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Step 2: Claim Details */}
+                {step === 2 && (
+                    <div className="p-6 space-y-6">
+                        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
+                            <span className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white">📝</span>
+                            <h2 className="text-xl font-bold text-gray-900">Claim Information</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Claim Type *</label>
                                 <select
                                     name="claimType"
                                     value={formData.claimType}
                                     onChange={handleChange}
-                                    required
                                     className={inputClassName}
                                 >
-                                    <option value="">Select claim type</option>
                                     <option value="medical">🏥 Medical</option>
                                     <option value="dental">🦷 Dental</option>
                                     <option value="vision">👓 Vision</option>
+                                    <option value="pharmacy">💊 Pharmacy</option>
                                     <option value="mental_health">🧠 Mental Health</option>
                                 </select>
                             </div>
@@ -157,135 +291,72 @@ const ProviderSubmitClaim = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Billed Amount *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Billed Amount (Ksh) *</label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-3.5 text-gray-500 font-medium">$</span>
                                     <input
                                         type="number"
                                         name="billedAmount"
                                         value={formData.billedAmount}
                                         onChange={handleChange}
                                         required
-                                        min="0"
-                                        step="0.01"
                                         placeholder="0.00"
-                                        className={`${inputClassName} pl-8`}
+                                        className={inputClassName}
                                     />
                                 </div>
                             </div>
+                        </div>
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Diagnosis Codes</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Diagnosis Codes (ICD-10)</label>
                                 <input
                                     type="text"
                                     name="diagnosisCodes"
                                     value={formData.diagnosisCodes}
                                     onChange={handleChange}
-                                    placeholder="e.g., J06.9, R05"
+                                    placeholder="e.g. J06.9, R05 (comma separated)"
                                     className={inputClassName}
                                 />
                             </div>
-
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Procedure Codes</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Procedure Codes (CPT)</label>
                                 <input
                                     type="text"
                                     name="procedureCodes"
                                     value={formData.procedureCodes}
                                     onChange={handleChange}
-                                    placeholder="e.g., 99213, 99214"
+                                    placeholder="e.g. 99213 (comma separated)"
                                     className={inputClassName}
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Clinical Notes / Description</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Medical Reason / Description</label>
                             <textarea
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
                                 rows={3}
-                                placeholder="Brief description of the service provided"
+                                placeholder="Describe the service provided..."
                                 className={inputClassName}
                             />
                         </div>
-
-                        <div className="flex justify-end pt-4 border-t border-gray-100">
-                            <button
-                                type="button"
-                                onClick={() => setStep(2)}
-                                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
-                            >
-                                Next: Upload Documents <span>→</span>
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 2: Upload Documents (Same as Member) */}
-                {step === 2 && (
-                    <div className="p-6 space-y-6">
-                        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-                            <span className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white">📎</span>
-                            <h2 className="text-xl font-bold text-gray-900">Upload Supporting Documents</h2>
-                        </div>
-
-                        <div className="border-2 border-dashed border-purple-200 bg-purple-50/50 rounded-2xl p-8 text-center hover:border-purple-400 transition-colors">
-                            <input
-                                type="file"
-                                multiple
-                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                                onChange={handleFileChange}
-                                className="hidden"
-                                id="file-upload"
-                            />
-                            <label htmlFor="file-upload" className="cursor-pointer">
-                                <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                                    <span className="text-3xl text-white">📄</span>
-                                </div>
-                                <p className="text-gray-700 font-semibold text-lg">Drop files here or click to upload</p>
-                                <p className="text-sm text-gray-500 mt-2">PDF, JPG, PNG, DOC up to 10MB each</p>
-                            </label>
-                        </div>
-
-                        {formData.documents.length > 0 && (
-                            <div className="space-y-3">
-                                <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                                    <span>📁</span> Uploaded Files ({formData.documents.length})
-                                </h3>
-                                {formData.documents.map((file, index) => (
-                                    <div key={index} className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                        <div className="flex items-center gap-3">
-                                            <span className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600">📄</span>
-                                            <span className="text-sm font-medium text-gray-700">{file.name}</span>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeFile(index)}
-                                            className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
 
                         <div className="flex justify-between pt-4 border-t border-gray-100">
                             <button
                                 type="button"
                                 onClick={() => setStep(1)}
-                                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium flex items-center gap-2"
+                                className="px-6 py-3 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-bold"
                             >
-                                <span>←</span> Back
+                                ← Back
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setStep(3)}
-                                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
+                                className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
                             >
-                                Next: Review <span>→</span>
+                                Review Submission →
                             </button>
                         </div>
                     </div>
@@ -296,59 +367,35 @@ const ProviderSubmitClaim = () => {
                     <div className="p-6 space-y-6">
                         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
                             <span className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white">✓</span>
-                            <h2 className="text-xl font-bold text-gray-900">Review Claim Details</h2>
+                            <h2 className="text-xl font-bold text-gray-900">Review & Certify</h2>
                         </div>
 
-                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 space-y-4 border border-purple-100">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="bg-white rounded-xl p-4">
-                                    <p className="text-sm text-gray-500">Patient</p>
-                                    <p className="font-semibold text-gray-900">{formData.patientName}</p>
+                        <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 space-y-4">
+                            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Patient</p>
+                                    <p className="font-bold text-gray-900">{memberInfo?.memberName}</p>
                                 </div>
-                                <div className="bg-white rounded-xl p-4">
-                                    <p className="text-sm text-gray-500">Claim Type</p>
-                                    <p className="font-semibold text-gray-900 capitalize">{formData.claimType.replace('_', ' ')}</p>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Policy Number</p>
+                                    <p className="font-mono font-bold text-gray-900">{memberInfo?.policyNumber}</p>
                                 </div>
-                                <div className="bg-white rounded-xl p-4">
-                                    <p className="text-sm text-gray-500">Date of Service</p>
-                                    <p className="font-semibold text-gray-900">{formData.serviceDate ? new Date(formData.serviceDate).toLocaleDateString() : '-'}</p>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Service Date</p>
+                                    <p className="font-bold text-gray-900">{formData.serviceDate}</p>
                                 </div>
-                                <div className="bg-white rounded-xl p-4">
-                                    <p className="text-sm text-gray-500">Billed Amount</p>
-                                    <p className="font-bold text-2xl text-purple-600">${parseFloat(formData.billedAmount || 0).toFixed(2)}</p>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">Billed Amount</p>
+                                    <p className="font-bold text-xl text-purple-600">Ksh {parseFloat(formData.billedAmount || 0).toLocaleString()}</p>
                                 </div>
-                            </div>
-
-                            {(formData.diagnosisCodes || formData.procedureCodes) && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {formData.diagnosisCodes && (
-                                        <div className="bg-white rounded-xl p-4">
-                                            <p className="text-sm text-gray-500">Diagnosis Codes</p>
-                                            <p className="font-mono font-semibold text-gray-900">{formData.diagnosisCodes}</p>
-                                        </div>
-                                    )}
-                                    {formData.procedureCodes && (
-                                        <div className="bg-white rounded-xl p-4">
-                                            <p className="text-sm text-gray-500">Procedure Codes</p>
-                                            <p className="font-mono font-semibold text-gray-900">{formData.procedureCodes}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="bg-white rounded-xl p-4">
-                                <p className="text-sm text-gray-500">Documents Attached</p>
-                                <p className="font-semibold text-gray-900">{formData.documents.length} file(s)</p>
                             </div>
                         </div>
 
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-start gap-3">
-                            <span className="text-2xl">⚠️</span>
-                            <div>
-                                <p className="font-semibold text-yellow-800">Provider Certification</p>
-                                <p className="text-sm text-yellow-700 mt-1">
-                                    I certify that the services listed were performed by me or under my supervision and that the information provided is accurate and complete.
-                                </p>
+                        <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl flex gap-3">
+                            <span className="text-xl">⚖️</span>
+                            <div className="text-sm text-orange-800">
+                                <p className="font-bold">Provider Certification</p>
+                                <p className="mt-1">By submitting this claim, I certify that the services described were medically necessary and provided to this patient on the date indicated.</p>
                             </div>
                         </div>
 
@@ -356,15 +403,19 @@ const ProviderSubmitClaim = () => {
                             <button
                                 type="button"
                                 onClick={() => setStep(2)}
-                                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-medium flex items-center gap-2"
+                                className="px-6 py-3 text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all font-bold"
                             >
-                                <span>←</span> Back
+                                ← Edit
                             </button>
                             <button
                                 type="submit"
-                                className="px-8 py-3 bg-gradient-to-r from-green-400 to-green-500 text-white rounded-xl hover:from-green-500 hover:to-green-600 transition-all shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
+                                disabled={loading}
+                                className={`px-10 py-3 rounded-xl font-bold shadow-lg transition-all ${loading
+                                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:shadow-xl'
+                                    }`}
                             >
-                                <span>✓</span> Submit Claim
+                                {loading ? 'Submitting...' : 'Submit Final Claim'}
                             </button>
                         </div>
                     </div>

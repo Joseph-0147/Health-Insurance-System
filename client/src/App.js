@@ -17,19 +17,22 @@ import MemberProfile from './pages/member/Profile';
 import Claims from './pages/member/Claims';
 import SubmitClaim from './pages/member/SubmitClaim';
 import ProviderSearch from './pages/member/ProviderSearch';
+import ProviderDetail from './pages/member/ProviderDetail';
 import IDCard from './pages/member/IDCard';
+import PolicyEnrollment from './pages/member/PolicyEnrollment';
 
 // Provider Portal
 import ProviderDashboard from './pages/provider/Dashboard';
 import ProviderSubmitClaim from './pages/provider/SubmitClaim';
 import ProviderClaims from './pages/provider/Claims';
 import ProviderPatients from './pages/provider/Patients';
+import ProviderProfile from './pages/provider/Profile';
 
-// Employer Portal
-import EmployerDashboard from './pages/employer/Dashboard';
-import AddEmployee from './pages/employer/AddEmployee';
-import Employees from './pages/employer/Employees';
-import Billing from './pages/employer/Billing';
+// Adjudicator Portal
+import AdjudicatorDashboard from './pages/adjudicator/Dashboard';
+import ClaimsFeed from './pages/adjudicator/ClaimsFeed';
+import ClaimDetail from './pages/adjudicator/ClaimDetail';
+import AdjudicatorHistory from './pages/adjudicator/History';
 
 // Common
 import Reports from './pages/common/Reports';
@@ -73,7 +76,9 @@ function App() {
                     <Route path="claims" element={<Claims />} />
                     <Route path="claims/submit" element={<SubmitClaim />} />
                     <Route path="providers" element={<ProviderSearch />} />
+                    <Route path="providers/:id" element={<ProviderDetail />} />
                     <Route path="id-card" element={<IDCard />} />
+                    <Route path="enroll" element={<PolicyEnrollment />} />
                   </Routes>
                 </Layout>
               </PrivateRoute>
@@ -88,7 +93,7 @@ function App() {
                 <Layout portalType="provider">
                   <Routes>
                     <Route path="dashboard" element={<ProviderDashboard />} />
-                    <Route path="profile" element={<Profile />} />
+                    <Route path="profile" element={<ProviderProfile />} />
                     <Route path="notifications" element={<Notifications />} />
                     <Route path="claims" element={<ProviderClaims />} />
                     <Route path="claims/submit" element={<ProviderSubmitClaim />} />
@@ -100,22 +105,21 @@ function App() {
             }
           />
 
-          {/* Employer Routes */}
+          {/* Adjudicator Routes */}
           <Route
-            path="/employer/*"
+            path="/adjudicator/*"
             element={
-              <PrivateRoute allowedRoles={['employer']}>
-                <Layout portalType="employer">
+              <PrivateRoute allowedRoles={['adjudicator']}>
+                <Layout portalType="adjudicator">
                   <Routes>
-                    <Route path="dashboard" element={<EmployerDashboard />} />
+                    <Route path="dashboard" element={<AdjudicatorDashboard />} />
+                    <Route path="claims" element={<ClaimsFeed />} />
+                    <Route path="claims/:id" element={<ClaimDetail />} />
+                    <Route path="history" element={<AdjudicatorHistory />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="notifications" element={<Notifications />} />
-                    <Route path="employees" element={<Employees />} />
-                    <Route path="employees/add" element={<AddEmployee />} />
-                    <Route path="billing" element={<Billing />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="settings" element={<Settings />} />
-                    <Route path="support" element={<Support />} />
                   </Routes>
                 </Layout>
               </PrivateRoute>

@@ -1,61 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const Claims = () => {
   const [filter, setFilter] = useState('all');
 
   // Mock claims data
-  const claims = [
-    {
-      id: 'CLM-2024-001',
-      type: 'Medical',
-      provider: 'City General Hospital',
-      serviceDate: '2024-12-15',
-      billedAmount: 1250.00,
-      allowedAmount: 1000.00,
-      paidAmount: 800.00,
-      memberResponsibility: 200.00,
-      status: 'paid',
-      submittedDate: '2024-12-16',
-    },
-    {
-      id: 'CLM-2024-002',
-      type: 'Pharmacy',
-      provider: 'CVS Pharmacy',
-      serviceDate: '2024-12-10',
-      billedAmount: 150.00,
-      allowedAmount: 120.00,
-      paidAmount: 96.00,
-      memberResponsibility: 24.00,
-      status: 'paid',
-      submittedDate: '2024-12-11',
-    },
-    {
-      id: 'CLM-2024-003',
-      type: 'Dental',
-      provider: 'Smile Dental Care',
-      serviceDate: '2024-12-18',
-      billedAmount: 500.00,
-      allowedAmount: null,
-      paidAmount: null,
-      memberResponsibility: null,
-      status: 'under_review',
-      submittedDate: '2024-12-19',
-    },
-    {
-      id: 'CLM-2024-004',
-      type: 'Vision',
-      provider: 'EyeCare Associates',
-      serviceDate: '2024-12-05',
-      billedAmount: 300.00,
-      allowedAmount: 250.00,
-      paidAmount: 0,
-      memberResponsibility: 250.00,
-      status: 'denied',
-      denialReason: 'Service not covered under current plan',
-      submittedDate: '2024-12-06',
-    },
-  ];
+  const [claims, setClaims] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch claims from API
+    // Using a simple fetch for now, can be replaced with axios
+    const fetchClaims = async () => {
+      try {
+        setLoading(true);
+        // Assuming we have an auth context to get token, or axios interceptor handles it
+        // For prototype, we'll try a direct fetch if proxy is set up, else simple mock fallback if fail
+        const response = await fetch('/api/claims', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` } // Simple token retrieval
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          setClaims(data.data.claims);
+        } else {
+          // Fallback to empty if API fails (or handle error)
+          setClaims([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch claims:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClaims();
+  }, [filter]); // Re-fetch if filter changes on server side, or client side filter below
 
   const getStatusBadge = (status) => {
     const styles = {
@@ -73,8 +53,8 @@ const Claims = () => {
     return status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const filteredClaims = filter === 'all' 
-    ? claims 
+  const filteredClaims = filter === 'all'
+    ? claims
     : claims.filter(c => c.status === filter);
 
   return (
@@ -111,7 +91,7 @@ const Claims = () => {
             <div>
               <p className="text-blue-100 text-sm font-medium">Total Billed</p>
               <p className="text-3xl font-bold text-white mt-1">
-                ${claims.reduce((sum, c) => sum + c.billedAmount, 0).toLocaleString()}
+                ksh {claims.reduce((sum, c) => sum + parseFloat(c.totalAmount || 0), 0).toLocaleString()}
               </p>
             </div>
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -124,7 +104,7 @@ const Claims = () => {
             <div>
               <p className="text-green-100 text-sm font-medium">Insurance Paid</p>
               <p className="text-3xl font-bold text-white mt-1">
-                ${claims.reduce((sum, c) => sum + (c.paidAmount || 0), 0).toLocaleString()}
+                ksh {claims.reduce((sum, c) => sum + parseFloat(c.approvedAmount || 0), 0).toLocaleString()}
               </p>
             </div>
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -137,7 +117,7 @@ const Claims = () => {
             <div>
               <p className="text-orange-100 text-sm font-medium">Your Responsibility</p>
               <p className="text-3xl font-bold text-white mt-1">
-                ${claims.reduce((sum, c) => sum + (c.memberResponsibility || 0), 0).toLocaleString()}
+                ksh {claims.reduce((sum, c) => sum + parseFloat(c.patientResponsibility || 0), 0).toLocaleString()}
               </p>
             </div>
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -154,11 +134,10 @@ const Claims = () => {
             <button
               key={status}
               onClick={() => setFilter(status)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                filter === status
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${filter === status
+                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               {status === 'all' ? 'All Claims' : formatStatus(status)}
             </button>
@@ -207,25 +186,26 @@ const Claims = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm text-gray-900 flex items-center gap-2">
                       <span className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-xs">
-                        {claim.type === 'Medical' && '🏥'}
-                        {claim.type === 'Pharmacy' && '💊'}
-                        {claim.type === 'Dental' && '🦷'}
-                        {claim.type === 'Vision' && '👓'}
+                        {(claim.claimType === 'medical' || claim.claimType === 'Medical') && '🏥'}
+                        {(claim.claimType === 'pharmacy' || claim.claimType === 'Pharmacy') && '💊'}
+                        {(claim.claimType === 'dental' || claim.claimType === 'Dental') && '🦷'}
+                        {(claim.claimType === 'vision' || claim.claimType === 'Vision') && '👓'}
+                        {claim.claimType === 'mental_health' && '🧠'}
                       </span>
-                      {claim.type}
+                      <span className="capitalize">{claim.claimType?.replace('_', ' ')}</span>
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {claim.provider}
+                    {claim.provider?.organizationName || 'Out-of-Network'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(claim.serviceDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    ${claim.billedAmount.toLocaleString()}
+                    ksh {parseFloat(claim.totalAmount || 0).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {claim.paidAmount !== null ? `$${claim.paidAmount.toLocaleString()}` : '-'}
+                    {claim.approvedAmount ? `ksh ${parseFloat(claim.approvedAmount).toLocaleString()}` : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusBadge(claim.status)}`}>

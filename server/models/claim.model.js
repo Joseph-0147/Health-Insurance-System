@@ -21,6 +21,11 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.ENUM('submitted', 'received', 'under_review', 'approved', 'rejected', 'paid', 'appealed'),
             defaultValue: 'submitted'
         },
+        claimType: {
+            type: DataTypes.ENUM('medical', 'dental', 'vision', 'pharmacy', 'mental_health'),
+            allowNull: false,
+            defaultValue: 'medical'
+        },
         diagnosisCodes: { // Store as JSON array of ICD-10 codes
             type: DataTypes.JSON,
             allowNull: false,
@@ -60,9 +65,9 @@ module.exports = (sequelize, DataTypes) => {
 
     Claim.associate = (models) => {
         Claim.belongsTo(models.Policy, { foreignKey: 'policyId', as: 'policy' });
-        // Claim.belongsTo(models.Provider, { foreignKey: 'providerId', as: 'provider' }); // Will uncomment when Provider exists
-        // Claim.hasMany(models.ClaimDocument, { foreignKey: 'claimId', as: 'documents' });
-        // Claim.hasMany(models.ClaimLine, { foreignKey: 'claimId', as: 'lines' }); // For detailed line items
+        Claim.belongsTo(models.Provider, { foreignKey: 'providerId', as: 'provider' });
+        Claim.hasMany(models.ClaimDocument, { foreignKey: 'claimId', as: 'documents' });
+        Claim.hasMany(models.ClaimLine, { foreignKey: 'claimId', as: 'claimLines' });
     };
 
     return Claim;

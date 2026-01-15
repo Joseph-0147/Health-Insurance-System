@@ -23,19 +23,18 @@ const Layout = ({ children, portalType }) => {
           { path: '/provider/claims', label: 'Claims', icon: '📋' },
           { path: '/provider/patients', label: 'Patients', icon: '👥' },
         ];
-      case 'employer':
+      case 'adjudicator':
         return [
-          { path: '/employer/dashboard', label: 'Dashboard', icon: '📊' },
-          { path: '/employer/employees', label: 'Employees', icon: '👥' },
-          { path: '/employer/billing', label: 'Billing', icon: '💰' },
+          { path: '/adjudicator/dashboard', label: 'Dashboard', icon: '📊' },
+          { path: '/adjudicator/claims', label: 'Claims Feed', icon: '📥' },
+          { path: '/adjudicator/history', label: 'History', icon: '📜' },
         ];
       case 'admin':
         return [
           { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-          { path: '/admin/claims', label: 'Claims', icon: '📋' },
-          { path: '/admin/members', label: 'Members', icon: '👥' },
-          { path: '/admin/providers', label: 'Providers', icon: '🏥' },
-          { path: '/admin/analytics', label: 'Analytics', icon: '📈' },
+          { path: '/admin/users', label: 'User Management', icon: '👥' },
+          { path: '/admin/reports', label: 'System Reports', icon: '📋' },
+          { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
         ];
       case 'insurance_agent':
         return [
@@ -55,7 +54,7 @@ const Layout = ({ children, portalType }) => {
     switch (portalType) {
       case 'member': return 'from-blue-500 to-purple-600';
       case 'provider': return 'from-green-500 to-teal-600';
-      case 'employer': return 'from-orange-500 to-red-600';
+      case 'adjudicator': return 'from-indigo-600 to-blue-600';
       case 'admin': return 'from-purple-500 to-pink-600';
       case 'insurance_agent': return 'from-indigo-500 to-cyan-600';
       default: return 'from-blue-500 to-purple-600';

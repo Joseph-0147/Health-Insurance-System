@@ -7,6 +7,28 @@ const { authorize } = require('../middleware/authorization');
 const memberController = require('../controllers/member.controller');
 
 /**
+ * @route   GET /api/members/me
+ * @desc    Get current member profile
+ * @access  Private
+ */
+router.get(
+  '/me',
+  authenticate,
+  memberController.getMember
+);
+
+/**
+ * @route   PUT /api/members/me
+ * @desc    Update current member profile
+ * @access  Private
+ */
+router.put(
+  '/me',
+  authenticate,
+  memberController.updateMember
+);
+
+/**
  * @route   GET /api/members/:id
  * @desc    Get member profile
  * @access  Private

@@ -154,9 +154,9 @@ const EnrollMember = () => {
                                     required
                                     className={inputClassName}
                                 >
-                                    <option value="silver_individual">Silver Individual - KES 4,500/mo</option>
-                                    <option value="gold_family">Gold Family - KES 12,000/mo</option>
-                                    <option value="platinum_ppo">Platinum PPO - KES 25,000/mo</option>
+                                    <option value="silver_individual">Silver Individual - ksh 4,500/mo</option>
+                                    <option value="gold_family">Gold Family - ksh 12,000/mo</option>
+                                    <option value="platinum_ppo">Platinum PPO - ksh 25,000/mo</option>
                                 </select>
                             </div>
                             <div>

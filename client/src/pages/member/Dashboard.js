@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const MemberDashboard = () => {
-  const stats = [
+  const [stats, setStats] = useState([
     {
       title: 'Active Policy',
-      value: 'Premium PPO',
-      subtitle: 'Valid until Dec 2025',
+      value: 'Loading...',
+      subtitle: '-',
       gradient: 'bg-gradient-to-r from-blue-500 to-purple-600',
       icon: '🛡️',
       change: 'Active',
@@ -14,44 +14,109 @@ const MemberDashboard = () => {
     },
     {
       title: 'Claims YTD',
-      value: '3',
-      subtitle: '$2,450 total claimed',
+      value: '0',
+      subtitle: 'ksh 0 total',
       gradient: 'bg-gradient-to-r from-green-500 to-teal-500',
       icon: '📋',
-      change: '+1 this month',
+      change: '0 this month',
       changeType: 'neutral'
     },
     {
       title: 'Deductible',
-      value: '$1,200',
-      subtitle: 'of $2,000 met',
+      value: 'ksh 0',
+      subtitle: 'of ksh 0 met',
       gradient: 'bg-gradient-to-r from-orange-500 to-pink-500',
       icon: '💰',
-      change: '60% complete',
+      change: '0% complete',
       changeType: 'positive'
     },
     {
-      title: 'Out-of-Pocket',
-      value: '$3,400',
-      subtitle: 'of $6,000 max',
+      title: 'Coverage Limit',
+      value: 'ksh 0',
+      subtitle: 'Annual max',
       gradient: 'bg-gradient-to-r from-purple-500 to-indigo-600',
       icon: '📊',
-      change: '43% used',
+      change: 'Active',
       changeType: 'neutral'
     },
-  ];
+  ]);
 
-  const recentClaims = [
-    { id: 'CLM-2024-001', provider: 'Aga Khan University Hospital', date: 'Dec 15, 2024', amount: 12500, status: 'approved', service: 'General Consultation' },
-    { id: 'CLM-2024-002', provider: 'Nairobi Hospital', date: 'Dec 10, 2024', amount: 45000, status: 'pending', service: 'Lab Tests' },
-    { id: 'CLM-2023-089', provider: 'Goodlife Pharmacy', date: 'Nov 28, 2024', amount: 3200, status: 'approved', service: 'Medication' },
-  ];
+  const [recentClaims, setRecentClaims] = useState([]);
+  const [policyData, setPolicyData] = useState(null);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const headers = { 'Authorization': `Bearer ${token}` };
+
+        // Fetch Policies
+        const policyRes = await fetch('/api/policies/my-policies', { headers });
+        const policies = await policyRes.json();
+        const activePolicy = policies.data && policies.data.length > 0 ? policies.data[0] : null;
+        setPolicyData(activePolicy);
+
+        // Fetch Claims (for stats)
+        const claimsRes = await fetch('/api/claims', { headers });
+        const claimsData = await claimsRes.json();
+        const claims = claimsData.data?.claims || [];
+
+        // Set recent claims (top 5)
+        setRecentClaims(claims.slice(0, 5).map(c => ({
+          id: c.id,
+          provider: c.provider?.organizationName || 'Out-of-Network',
+          date: new Date(c.serviceDate).toLocaleDateString('en-KE', { month: 'short', day: 'numeric', year: 'numeric' }),
+          amount: parseFloat(c.totalAmount || 0),
+          status: c.status,
+          service: Array.isArray(c.diagnosisCodes) && c.diagnosisCodes.length > 0 ? c.diagnosisCodes.join(', ') : (c.claimType || 'Medical')
+        })));
+
+        // Calculate Stats
+        const totalClaims = claims.length;
+        const totalClaimed = claims.reduce((acc, c) => acc + (c.totalAmount || 0), 0);
+        const pendingClaims = claims.filter(c => c.status === 'pending').length;
+
+        // Update Stats State
+        setStats(prev => [
+          {
+            ...prev[0],
+            value: activePolicy ? (activePolicy.type === 'family' ? 'Family Plan' : 'Individual Plan') : 'No Active Plan',
+            subtitle: activePolicy ? `Valid until ${new Date(activePolicy.endDate).toLocaleDateString()}` : 'Enroll to get covered',
+            change: activePolicy?.status === 'active' ? 'Active' : 'Inactive'
+          },
+          {
+            ...prev[1],
+            value: totalClaims.toString(),
+            subtitle: `ksh ${totalClaimed.toLocaleString()} total`,
+            change: `${pendingClaims} pending`
+          },
+          {
+            ...prev[2],
+            value: activePolicy ? `ksh ${(activePolicy.deductible || 0).toLocaleString()}` : 'ksh 0',
+            subtitle: 'Annual deductible',
+            change: 'Per year'
+          },
+          {
+            ...prev[3],
+            value: activePolicy ? `ksh ${(activePolicy.coverageLimit || 0).toLocaleString()}` : 'ksh 0',
+            subtitle: 'Maximum coverage',
+            change: 'Annual limit'
+          }
+        ]);
+
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Quick Actions - with proper paths and colors
   const quickActions = [
-    { label: 'Annual Limit', value: 'KES 5.0M', change: '85% remaining', icon: '🛡️', gradient: 'from-blue-400 to-blue-600' },
-    { label: 'Deductible', value: 'KES 25,000', change: 'KES 15,000 used', icon: '📉', gradient: 'from-purple-400 to-purple-600' },
-    { label: 'Active Claims', value: '2', change: 'KES 45,000 pending', icon: '📝', gradient: 'from-orange-400 to-orange-600' },
-    { label: 'Next Premium', value: 'KES 12,450', change: 'Due Jan 1', icon: '💰', gradient: 'from-green-400 to-green-600' },
+    { label: 'Enroll in Policy', path: '/member/enroll', icon: '🛡️', color: 'from-emerald-500 to-green-600' },
+    { label: 'Submit a Claim', path: '/member/claims/submit', icon: '📝', color: 'from-purple-500 to-pink-500' },
+    { label: 'View ID Card', path: '/member/id-card', icon: '💳', color: 'from-blue-500 to-indigo-500' },
+    { label: 'Find a Provider', path: '/member/providers', icon: '🏥', color: 'from-green-500 to-teal-500' },
   ];
 
   const getStatusBadge = (status) => {
@@ -59,6 +124,7 @@ const MemberDashboard = () => {
       approved: 'bg-green-100 text-green-800',
       pending: 'bg-yellow-100 text-yellow-800',
       denied: 'bg-red-100 text-red-800',
+      paid: 'bg-blue-100 text-blue-800',
     };
     return styles[status] || 'bg-gray-100 text-gray-800';
   };
@@ -71,7 +137,7 @@ const MemberDashboard = () => {
         <p className="text-gray-500 mt-1">Here's an overview of your health insurance benefits</p>
       </div>
 
-      {/* Stat Cards - Corona Style */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
           <div key={index} className={`${stat.gradient} rounded-xl p-6 text-white shadow-lg transform hover:-translate-y-1 transition-all duration-300`}>
@@ -102,33 +168,41 @@ const MemberDashboard = () => {
             </Link>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Amount</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Provider</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentClaims.map((claim) => (
-                  <tr key={claim.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <span className="font-bold text-gray-900">KES {claim.amount.toLocaleString()}</span>
-                      <p className="text-xs text-gray-500 mt-1">{claim.service}</p>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{claim.provider}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{claim.date}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${getStatusBadge(claim.status)}`}>
-                        {claim.status}
-                      </span>
-                    </td>
+            {recentClaims.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Amount</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Provider</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recentClaims.map((claim) => (
+                    <tr key={claim.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-gray-900">ksh {claim.amount.toLocaleString()}</span>
+                        <p className="text-xs text-gray-500 mt-1">{claim.service}</p>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{claim.provider}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{claim.date}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${getStatusBadge(claim.status)}`}>
+                          {claim.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-8 text-center text-gray-500">
+                <span className="text-4xl mb-2 block">📋</span>
+                <p className="font-medium">No claims yet</p>
+                <p className="text-sm mt-1">Submit your first claim to see it here</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -153,28 +227,31 @@ const MemberDashboard = () => {
 
       {/* Coverage Summary */}
       <div className="mt-6 bg-white rounded-xl shadow-card p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Coverage Summary</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Coverage Overview</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
-            <p className="text-sm text-gray-500 mb-2">Deductible Progress</p>
+            <p className="text-sm text-gray-500 mb-2">Deductible</p>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" style={{ width: '60%' }}></div>
+              <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full" style={{ width: '0%' }}></div>
             </div>
-            <p className="text-sm text-gray-600 mt-2">$1,200 of $2,000</p>
+            <p className="text-sm text-gray-600 mt-2">ksh 0 of ksh {policyData?.deductible?.toLocaleString() || '0'}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 mb-2">Out-of-Pocket Maximum</p>
+            <p className="text-sm text-gray-500 mb-2">Coverage Used</p>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-green-500 to-teal-500 rounded-full" style={{ width: '43%' }}></div>
+              <div className="h-full bg-gradient-to-r from-green-500 to-teal-500 rounded-full" style={{ width: '0%' }}></div>
             </div>
-            <p className="text-sm text-gray-600 mt-2">$3,400 of $6,000</p>
+            <p className="text-sm text-gray-600 mt-2">ksh 0 of ksh {policyData?.coverageLimit?.toLocaleString() || '0'}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 mb-2">Preventive Care Used</p>
-            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-orange-500 to-pink-500 rounded-full" style={{ width: '25%' }}></div>
+            <p className="text-sm text-gray-500 mb-2">Policy Status</p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className={`w-3 h-3 rounded-full ${policyData?.status === 'active' ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+              <span className="text-sm font-medium text-gray-700 capitalize">{policyData?.status || 'No Policy'}</span>
             </div>
-            <p className="text-sm text-gray-600 mt-2">1 of 4 visits</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {policyData?.policyNumber || 'Enroll to get coverage'}
+            </p>
           </div>
         </div>
       </div>

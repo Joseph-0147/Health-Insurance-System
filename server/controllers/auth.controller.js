@@ -16,10 +16,10 @@ exports.register = async (req, res, next) => {
 
     // TODO: Import User model
     // Check if user exists
-    // const existingUser = await User.findOne({ where: { email } });
-    // if (existingUser) {
-    //   return res.status(409).json({ success: false, message: 'User already exists' });
-    // }
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({ success: false, message: 'User already exists' });
+    }
 
     // Hash password
     const passwordHash = await hashPassword(password);
@@ -28,16 +28,16 @@ exports.register = async (req, res, next) => {
     const emailVerificationToken = generateToken();
 
     // Create user
-    // const user = await User.create({
-    //   email,
-    //   passwordHash,
-    //   role,
-    //   firstName,
-    //   lastName,
-    //   phone,
-    //   emailVerificationToken,
-    //   status: 'active',
-    // });
+    const user = await User.create({
+      email,
+      password: passwordHash,
+      role,
+      firstName,
+      lastName,
+      // phone, // Phone belongs in Member/Provider profile, skipping for User model
+      // emailVerificationToken, // Not in model yet
+      isActive: true,
+    });
 
     // Send verification email
     // await sendVerificationEmail({ email, firstName }, emailVerificationToken);
@@ -52,7 +52,7 @@ exports.register = async (req, res, next) => {
       success: true,
       message: 'Registration successful. Please check your email to verify your account.',
       data: {
-        // userId: user.id,
+        userId: user.id,
         email,
         role,
       },

@@ -25,6 +25,36 @@ router.get(
   providerController.searchProviders
 );
 
+router.get(
+  '/me',
+  authenticate,
+  authorize('provider'),
+  providerController.getProviderProfile
+);
+
+router.get(
+  '/patients',
+  authenticate,
+  authorize('provider'),
+  providerController.getPatients
+);
+
+router.put(
+  '/me',
+  authenticate,
+  authorize('provider'),
+  [
+    body('specialty').optional().trim().notEmpty(),
+    body('organizationName').optional().trim().notEmpty(),
+    body('phoneNumber').optional().trim().notEmpty(),
+    body('address').optional().trim(),
+    body('city').optional().trim(),
+    body('zipCode').optional().trim(),
+  ],
+  validate,
+  providerController.updateProviderProfile
+);
+
 /**
  * @route   GET /api/providers/:id
  * @desc    Get provider details
@@ -117,9 +147,8 @@ router.post(
   authenticate,
   authorize('provider'),
   [
-    body('memberId').isUUID().withMessage('Valid member ID required'),
-    body('serviceDate').isISO8601().withMessage('Valid service date required'),
-    body('serviceType').optional().trim(),
+    body('memberId').trim().notEmpty().withMessage('Member ID required'),
+    body('dob').trim().notEmpty().withMessage('Date of birth required'),
   ],
   validate,
   providerController.verifyEligibility

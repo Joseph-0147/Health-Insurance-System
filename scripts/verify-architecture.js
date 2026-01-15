@@ -16,7 +16,7 @@ async function verify() {
         // Check modules
         const expectedModels = [
             'User', 'Member', 'Policy', 'Claim', 'Provider',
-            'Employer', 'Dependent', 'ClaimDocument', 'Appeal',
+            'Dependent', 'ClaimDocument', 'Appeal',
             'Contract', 'Payment', 'Notification', 'Session'
         ];
 
@@ -37,6 +37,13 @@ async function verify() {
             success = false;
         }
 
+        if (userAttributes.values.includes('adjudicator')) {
+            console.log("✅ 'Claims Adjudicator' role exists in User model.");
+        } else {
+            console.error("❌ 'Claims Adjudicator' role MISSING in User model.");
+            success = false;
+        }
+
         // Attempt Sync (safe in dev)
         if (process.env.NODE_ENV !== 'production' && process.env.NODE_ENV !== 'test') {
             // Using force: false to just create if not exists
@@ -44,6 +51,31 @@ async function verify() {
             // console.log('✅ Database sync attempted.');
             // Commenting out sync to avoid potentially heavy operations or errors if DB is locked by running server
             console.log('ℹ️ Skipping active DB sync to avoid conflict with running server. Models loaded successfully.');
+        }
+
+        // Check Relationships (Data Design & Relationships slide)
+        // Member 1:N Policy
+        if (db.Member.associations.Policies || db.Member.associations.policies) {
+            console.log("✅ Relationship Member 1:N Policy verified.");
+        } else {
+            console.warn("⚠️ Relationship Member 1:N Policy NOT found.");
+        }
+
+        // Policy 1:N Claims
+        if (db.Policy.associations.Claims || db.Policy.associations.claims) {
+            console.log("✅ Relationship Policy 1:N Claims verified.");
+        } else {
+            console.warn("⚠️ Relationship Policy 1:N Claims NOT found.");
+        }
+
+        // Claim 1:N ClaimLines (Assuming Claim has association to items/lines)
+        // Checking generic 'ClaimItems' or similar if 'ClaimLines' doesn't exist directly, 
+        // based on common naming. Adjusting to 'ClaimLines' as per PDF.
+        if (db.Claim.associations.ClaimLines || db.Claim.associations.claimLines
+            || db.Claim.associations.services) { // 'services' often used in this codebase
+            console.log("✅ Relationship Claim 1:N items (ClaimLines) verified.");
+        } else {
+            console.warn("⚠️ Relationship Claim 1:N ClaimLines NOT found (Checked 'ClaimLines' and 'services').");
         }
 
     } catch (error) {
